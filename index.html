@@ -313,6 +313,10 @@
   }
   .auto-badge.show { display: inline-block; }
 
+  .icon-btn.disabled { opacity: 0.35; pointer-events: none; }
+
+  .pane.readonly textarea { color: var(--ink-soft); }
+
   /* ---------- Textareas ---------- */
   textarea {
     flex: 1;
@@ -454,28 +458,39 @@
       <span class="dir">⇄</span>
     </div>
 
-    <section class="pane">
+    <section class="pane" id="encoded-pane">
       <div class="pane-header">
         <div class="pane-title">
           <span class="index">02</span>
-          <span>Encoded</span>
+          <span id="encoded-title">Encoded</span>
           <span class="label-mini">Method</span>
           <select id="algorithm" class="algo-select" aria-label="Algorithm">
             <option value="auto">Auto-detect</option>
-            <option value="base64">Base64</option>
-            <option value="url">URL Encoding</option>
-            <option value="hex">Hexadecimal</option>
-            <option value="binary">Binary</option>
-            <option value="ascii">ASCII (Decimal)</option>
-            <option value="unicode">Unicode Escapes</option>
-            <option value="html">HTML Entities</option>
-            <option value="rot13">ROT13</option>
-            <option value="caesar">Caesar Cipher</option>
-            <option value="morse">Morse Code</option>
-            <option value="reverse">Reverse</option>
-            <option value="jwt">JWT (decode only)</option>
+            <optgroup label="Encode + decode">
+              <option value="base64">Base64</option>
+              <option value="url">URL Encoding</option>
+              <option value="hex">Hexadecimal</option>
+              <option value="binary">Binary</option>
+              <option value="ascii">ASCII (Decimal)</option>
+              <option value="unicode">Unicode Escapes</option>
+              <option value="html">HTML Entities</option>
+              <option value="rot13">ROT13</option>
+              <option value="caesar">Caesar Cipher</option>
+              <option value="morse">Morse Code</option>
+              <option value="reverse">Reverse</option>
+            </optgroup>
+            <optgroup label="Decode only">
+              <option value="jwt">JWT</option>
+            </optgroup>
+            <optgroup label="One-way digest">
+              <option value="md5">MD5</option>
+              <option value="sha1">SHA-1</option>
+              <option value="sha256">SHA-256</option>
+              <option value="sha512">SHA-512</option>
+            </optgroup>
           </select>
           <span id="auto-badge" class="auto-badge">Auto</span>
+          <span id="oneway-badge" class="auto-badge">One-way</span>
           <span id="caesar-controls" class="caesar-inline hidden">
             <span class="label-mini">Shift</span>
             <input type="number" id="caesar-shift" value="3" min="-25" max="25" />
@@ -512,6 +527,11 @@
   const decodedRole = $("decoded-role");
   const encodedRole = $("encoded-role");
   const shareBtn = $("share-btn");
+  const encodedPane = $("encoded-pane");
+  const encodedTitle = $("encoded-title");
+  const onewayBadge = $("oneway-badge");
+  const encodedPasteBtn = document.querySelector('[data-action="paste"][data-target="encoded"]');
+  const encodedClearBtn = document.querySelector('[data-action="clear"][data-target="encoded"]');
 
   const STORAGE_KEY = "decoder-tool:state:v1";
 
@@ -532,6 +552,63 @@
       errorBar.classList.add("show");
     }
   }
+
+  // ---------- One-way digests ----------
+  const toHexStr = (buf) =>
+    Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  // MD5 is not in Web Crypto, so it ships inline (RFC 1321)
+  function md5Hex(bytes) {
+    const K = new Int32Array(64);
+    for (let i = 0; i < 64; i++) K[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296) | 0;
+    const S = [7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,
+               5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,
+               4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,
+               6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21];
+    const rotl = (x, c) => (x << c) | (x >>> (32 - c));
+    const len = bytes.length;
+    const padded = new Uint8Array((((len + 8) >> 6) << 6) + 64);
+    padded.set(bytes);
+    padded[len] = 0x80;
+    const dv = new DataView(padded.buffer);
+    const bitLen = len * 8;
+    dv.setUint32(padded.length - 8, bitLen >>> 0, true);
+    dv.setUint32(padded.length - 4, Math.floor(bitLen / 4294967296), true);
+    let a0 = 0x67452301 | 0, b0 = 0xefcdab89 | 0, c0 = 0x98badcfe | 0, d0 = 0x10325476 | 0;
+    const M = new Int32Array(16);
+    for (let off = 0; off < padded.length; off += 64) {
+      for (let j = 0; j < 16; j++) M[j] = dv.getUint32(off + j * 4, true);
+      let A = a0, B = b0, C = c0, D = d0;
+      for (let i = 0; i < 64; i++) {
+        let F, g;
+        if (i < 16) { F = (B & C) | (~B & D); g = i; }
+        else if (i < 32) { F = (D & B) | (~D & C); g = (5 * i + 1) % 16; }
+        else if (i < 48) { F = B ^ C ^ D; g = (3 * i + 5) % 16; }
+        else { F = C ^ (B | ~D); g = (7 * i) % 16; }
+        F = (F + A + K[i] + M[g]) | 0;
+        A = D; D = C; C = B;
+        B = (B + rotl(F, S[i])) | 0;
+      }
+      a0 = (a0 + A) | 0; b0 = (b0 + B) | 0; c0 = (c0 + C) | 0; d0 = (d0 + D) | 0;
+    }
+    const out = new Uint8Array(16);
+    const odv = new DataView(out.buffer);
+    odv.setUint32(0, a0 >>> 0, true); odv.setUint32(4, b0 >>> 0, true);
+    odv.setUint32(8, c0 >>> 0, true); odv.setUint32(12, d0 >>> 0, true);
+    return toHexStr(out);
+  }
+
+  const shaAlgo = (label, name) => ({
+    label,
+    oneWay: true,
+    encode(s) {
+      if (!(window.crypto && crypto.subtle)) {
+        return Promise.reject(new Error(label + " requires a secure context (https or localhost)"));
+      }
+      return crypto.subtle.digest(name, utf8Bytes(s)).then(toHexStr);
+    },
+    decode() { throw new Error(label + " is a one-way digest — it cannot be reversed"); },
+  });
 
   // ---------- Algorithms ----------
   const ALGOS = {
@@ -710,7 +787,7 @@
     },
 
     jwt: {
-      label: "JWT (decode only)",
+      label: "JWT",
       encode() { throw new Error("JWT is decode-only — paste a JWT token in the right pane"); },
       decode(s) {
         const cleaned = s.trim();
@@ -730,6 +807,16 @@
         return JSON.stringify({ header, payload, signature: parts[2] || null }, null, 2);
       },
     },
+
+    md5: {
+      label: "MD5",
+      oneWay: true,
+      encode(s) { return md5Hex(utf8Bytes(s)); },
+      decode() { throw new Error("MD5 is a one-way digest — it cannot be reversed"); },
+    },
+    sha1: shaAlgo("SHA-1", "SHA-1"),
+    sha256: shaAlgo("SHA-256", "SHA-256"),
+    sha512: shaAlgo("SHA-512", "SHA-512"),
   };
 
   // ---------- Auto-detect ----------
@@ -795,6 +882,15 @@
     } else {
       autoBadge.classList.remove("show");
     }
+    // One-way digests: direction is fixed plain → digest
+    const oneWay = !!ALGOS[key].oneWay;
+    onewayBadge.classList.toggle("show", oneWay);
+    encodedPane.classList.toggle("readonly", oneWay);
+    encoded.readOnly = oneWay;
+    encodedTitle.textContent = oneWay ? "Digest" : "Encoded";
+    encoded.placeholder = oneWay ? "Digest appears here…" : "Encoded text appears here…";
+    encodedPasteBtn.classList.toggle("disabled", oneWay);
+    encodedClearBtn.classList.toggle("disabled", oneWay);
   }
 
   function updateStats() {
@@ -812,25 +908,43 @@
     encodedRole.classList.toggle("source", !src);
   }
 
+  function finishSync() {
+    updateStats();
+    updateRoles();
+    saveState();
+  }
+
+  // Guards against async digests resolving out of order while typing
+  let encodeSeq = 0;
+
   function syncFromDecoded() {
+    const seq = ++encodeSeq;
+    const input = decoded.value;
+    // JWT can't be re-encoded; if auto-detect had settled on it, fall back
+    if (algoSelect.value === "auto" && autoResolved === "jwt") autoResolved = "base64";
+    updateControls();
     try {
-      const input = decoded.value;
-      // JWT can't be re-encoded; if auto-detect had settled on it, fall back
-      if (algoSelect.value === "auto" && autoResolved === "jwt") autoResolved = "base64";
-      updateControls();
-      if (input === "") {
+      // Empty in → empty out, except one-way digests: the empty string has a valid digest
+      if (input === "" && !activeAlgo().oneWay) {
         encoded.value = "";
         showError(null);
+        finishSync();
+        return;
+      }
+      const out = activeAlgo().encode(input);
+      if (out && typeof out.then === "function") {
+        out.then(
+          (v) => { if (seq !== encodeSeq) return; encoded.value = v; showError(null); finishSync(); },
+          (err) => { if (seq !== encodeSeq) return; showError(err.message || String(err)); finishSync(); }
+        );
       } else {
-        encoded.value = activeAlgo().encode(input);
+        encoded.value = out;
         showError(null);
+        finishSync();
       }
     } catch (err) {
       showError(err.message || String(err));
-    } finally {
-      updateStats();
-      updateRoles();
-      saveState();
+      finishSync();
     }
   }
 
@@ -853,9 +967,7 @@
     } catch (err) {
       showError(err.message || String(err));
     } finally {
-      updateStats();
-      updateRoles();
-      saveState();
+      finishSync();
     }
   }
 
@@ -923,6 +1035,7 @@
       if (state.a === "auto" || (state.a && ALGOS[state.a])) algoSelect.value = state.a;
       if (state.c != null) caesarShift.value = state.c;
       lastSource = state.s === "encoded" ? "encoded" : "decoded";
+      if (ALGOS[algoSelect.value] && ALGOS[algoSelect.value].oneWay) lastSource = "decoded";
       if (lastSource === "decoded") {
         decoded.value = state.t || "";
         syncFromDecoded();
@@ -941,6 +1054,8 @@
   encoded.addEventListener("input", () => { lastSource = "encoded"; syncFromEncoded(); });
 
   algoSelect.addEventListener("change", () => {
+    // One-way digests only go plain → digest
+    if (ALGOS[algoSelect.value] && ALGOS[algoSelect.value].oneWay) lastSource = "decoded";
     updateControls();
     refresh();
     saveState();
@@ -952,6 +1067,8 @@
     btn.addEventListener("click", async () => {
       const action = btn.dataset.action;
       const target = btn.dataset.target === "decoded" ? decoded : encoded;
+      // Digest pane is output-only for one-way algos
+      if (target === encoded && action !== "copy" && ALGOS[activeAlgoKey()].oneWay) return;
       if (action === "clear") {
         target.value = "";
         target.dispatchEvent(new Event("input", { bubbles: true }));
@@ -1011,6 +1128,7 @@
       if (saved.algo && (ALGOS[saved.algo] || saved.algo === "auto")) algoSelect.value = saved.algo;
       if (saved.caesar != null) caesarShift.value = saved.caesar;
       lastSource = saved.source === "encoded" ? "encoded" : "decoded";
+      if (ALGOS[algoSelect.value] && ALGOS[algoSelect.value].oneWay) lastSource = "decoded";
       if (lastSource === "decoded" && saved.decoded) {
         decoded.value = saved.decoded;
         syncFromDecoded();
@@ -1018,6 +1136,10 @@
         encoded.value = saved.encoded;
         syncFromEncoded();
       }
+    }
+    // One-way digests always derive output — even the empty string has a digest
+    if (ALGOS[algoSelect.value] && ALGOS[algoSelect.value].oneWay && encoded.value === "") {
+      syncFromDecoded();
     }
     updateControls();
     updateStats();

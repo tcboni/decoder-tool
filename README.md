@@ -33,7 +33,7 @@ A lightweight web app for encoding and decoding text.
 | SHA-256         |   ✓    |        |
 | SHA-512         |   ✓    |        |
 
-Hashes are one-way: the tool marks them with a **ONE-WAY** stamp, fixes the direction to plain → digest, and makes the digest pane read-only.
+Hashes are one-way: the tool marks them with a **ONE-WAY** stamp, fixes the direction to plain → encoded, and makes the output pane read-only.
 
 ## Privacy
 

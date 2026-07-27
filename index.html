@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light" />
 <title>Decoder Tool</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2326221b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='1' y='3' width='22' height='18' rx='3' fill='%23f6f1e3' stroke='none'/%3E%3Cpath d='M5 8h6'/%3E%3Cpath d='M5 12h6'/%3E%3Cpath d='M5 16h6'/%3E%3Cpath d='M15 8l4 4-4 4' stroke='%23b3372e'/%3E%3C/svg%3E" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='1.5' y='1.5' width='29' height='29' rx='6' fill='%23f6f1e3' stroke='%23b3372e' stroke-width='2.5'/%3E%3Cg fill='%23b3372e'%3E%3Crect x='7' y='9.5' width='9.5' height='3.5' rx='1.75'/%3E%3Ccircle cx='20.5' cy='11.25' r='2'/%3E%3Ccircle cx='25' cy='11.25' r='2'/%3E%3Crect x='7' y='19' width='9.5' height='3.5' rx='1.75'/%3E%3C/g%3E%3C/svg%3E" />
 <style>
   :root {
     --paper: #e9e1cf;
@@ -462,7 +462,7 @@
       <div class="pane-header">
         <div class="pane-title">
           <span class="index">02</span>
-          <span id="encoded-title">Encoded</span>
+          <span>Encoded</span>
           <span class="label-mini">Method</span>
           <select id="algorithm" class="algo-select" aria-label="Algorithm">
             <option value="auto">Auto-detect</option>
@@ -482,7 +482,7 @@
             <optgroup label="Decode only">
               <option value="jwt">JWT</option>
             </optgroup>
-            <optgroup label="One-way digest">
+            <optgroup label="One-way">
               <option value="md5">MD5</option>
               <option value="sha1">SHA-1</option>
               <option value="sha256">SHA-256</option>
@@ -528,7 +528,6 @@
   const encodedRole = $("encoded-role");
   const shareBtn = $("share-btn");
   const encodedPane = $("encoded-pane");
-  const encodedTitle = $("encoded-title");
   const onewayBadge = $("oneway-badge");
   const encodedPasteBtn = document.querySelector('[data-action="paste"][data-target="encoded"]');
   const encodedClearBtn = document.querySelector('[data-action="clear"][data-target="encoded"]');
@@ -607,7 +606,7 @@
       }
       return crypto.subtle.digest(name, utf8Bytes(s)).then(toHexStr);
     },
-    decode() { throw new Error(label + " is a one-way digest — it cannot be reversed"); },
+    decode() { throw new Error(label + " is one-way — it cannot be reversed"); },
   });
 
   // ---------- Algorithms ----------
@@ -812,7 +811,7 @@
       label: "MD5",
       oneWay: true,
       encode(s) { return md5Hex(utf8Bytes(s)); },
-      decode() { throw new Error("MD5 is a one-way digest — it cannot be reversed"); },
+      decode() { throw new Error("MD5 is one-way — it cannot be reversed"); },
     },
     sha1: shaAlgo("SHA-1", "SHA-1"),
     sha256: shaAlgo("SHA-256", "SHA-256"),
@@ -887,8 +886,6 @@
     onewayBadge.classList.toggle("show", oneWay);
     encodedPane.classList.toggle("readonly", oneWay);
     encoded.readOnly = oneWay;
-    encodedTitle.textContent = oneWay ? "Digest" : "Encoded";
-    encoded.placeholder = oneWay ? "Digest appears here…" : "Encoded text appears here…";
     encodedPasteBtn.classList.toggle("disabled", oneWay);
     encodedClearBtn.classList.toggle("disabled", oneWay);
   }

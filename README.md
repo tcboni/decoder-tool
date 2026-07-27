@@ -10,7 +10,7 @@ A lightweight web app for encoding and decoding text.
 - **Auto-detect** — paste an encoded string and the tool picks the right algorithm.
 - **Shareable URLs** — the Share button copies a link that restores your input on the other end.
 - **Persistent state** — your last input is restored on page reload via `localStorage`.
-- **Dark, sleek UI** — fills the viewport, keyboard-friendly, copy/paste/clear in each pane.
+- **Worksheet UI** — a paper-and-typewriter "cryptanalysis worksheet" look; fills the viewport, keyboard-friendly, copy/paste/clear in each pane.
 
 ## Supported algorithms
 
@@ -21,6 +21,7 @@ A lightweight web app for encoding and decoding text.
 | Hexadecimal     |   ✓    |   ✓    |
 | Binary          |   ✓    |   ✓    |
 | ASCII (Decimal) |   ✓    |   ✓    |
+| Unicode Escapes |   ✓    |   ✓    |
 | HTML Entities   |   ✓    |   ✓    |
 | ROT13           |   ✓    |   ✓    |
 | Caesar Cipher   |   ✓    |   ✓    |

@@ -28,6 +28,12 @@ A lightweight web app for encoding and decoding text.
 | Morse Code      |   ✓    |   ✓    |
 | Reverse         |   ✓    |   ✓    |
 | JWT             |        |   ✓    |
+| MD5             |   ✓    |        |
+| SHA-1           |   ✓    |        |
+| SHA-256         |   ✓    |        |
+| SHA-512         |   ✓    |        |
+
+Hashes are one-way: the tool marks them with a **ONE-WAY** stamp, fixes the direction to plain → digest, and makes the digest pane read-only.
 
 ## Privacy
 
